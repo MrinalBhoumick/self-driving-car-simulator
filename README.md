@@ -1,34 +1,15 @@
 # self-driving-car-simulator
-Creating a web-based simulation for a self-driving car involves multiple steps. We'll develop a simple website that incorporates the car simulation using HTML, CSS, and JavaScript. This example will simulate the car's behavior on a canvas, illustrating how it navigates based on neural network inputs and sensor data.
+HTML and Canvas: We create a simple HTML document with a <canvas> element to draw the simulation. The canvas has an ID of simulationCanvas, which we will use to reference it in JavaScript. The canvas dimensions are set to 800x600 pixels.
 
-Project Structure
-Here's the basic structure of our project:
-
-lua
-Copy code
-self-driving-car-simulation/
-├── index.html
-├── style.css
-└── script.js
-
-Explanation
-Controls Class:
-Handles keyboard input for manual control.
-
-Sensor Class:
-Placeholder for simulating sensors (e.g., LiDAR, radar).
-
-Neural Network Class:
-Placeholder for a simple neural network, with a mock feedForward method to generate random control outputs.
-
-Car Class:
-Implements the car’s physics, movement, and collision detection.
-
-Initialization Code:
-Sets up the canvas and animates the car's movement.
-
-Running the Simulation
-To run the simulation, open index.html in a web browser. You should see a canvas with a rectangle representing the car, which moves based on the control logic defined in the Car class.
-
-This example provides a foundational structure. In a more comprehensive project, you would expand the Sensor and Neural Network classes to include real sensor data processing and neural network computation, respectively. You could also add more complex environment simulation with roads, obstacles, and other traffic.
+Canvas and Context: Gets the canvas element and its 2D rendering context.
+Car and Obstacle Arrays: Holds the cars and obstacles in the simulation.
+Intervals: Variables to manage the intervals for adding cars and obstacles.
+addCar Function: Adds a car at a random position, ensuring it doesn't intersect with existing cars.
+addObstacle Function: Adds an obstacle at a random position.
+stopAddingCars and stopAddingObstacles Functions: Stops the intervals for adding cars and obstacles.
+animate Function: The main animation loop, clears the canvas, updates and draws each car and obstacle, and requests the next animation frame.
+Execution
+Interval Setup: Adds cars every second for 10 seconds and obstacles every 1.5 seconds for 5 seconds.
+Animation Start: Calls the animate function to start the simulation.
+This setup provides a basic simulation where cars avoid obstacles and each other, dynamically finding new paths. Further improvements could include more sophisticated pathfinding algorithms and more complex obstacle shapes and sizes.
 
