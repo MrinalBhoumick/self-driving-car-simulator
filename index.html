@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Car Simulation</title>
+    <style>
+        canvas {
+            border: 1px solid black;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="simulationCanvas" width="800" height="600"></canvas>
+    <script>
+        class Controls {
+            constructor(controlType) {
+                this.forward = false;
+                this.left = false;
+                this.right = false;
+                this.reverse = false;
+
+                switch (controlType) {
+                    case "KEYS":
+                        this.addKeyboardListeners();
+                        break;
+                    case "AI":
+                        this.forward = true;
+                        break;
+                }
+            }
+
+            addKeyboardListeners() {
+                document.onkeydown = (event) => {
+                    switch (event.key) {
+                        case "ArrowLeft":
+                            this.left = true;
+                            break;
+                        case "ArrowRight":
+                            this.right = true;
+                            break;
+                        case "ArrowUp":
+                            this.forward = true;
+                            break;
+                        case "ArrowDown":
+                            this.reverse = true;
+                            break;
+                    }
+                };
+
+                document.onkeyup = (event) => {
+                    switch (event.key) {
+                        case "ArrowLeft":
+                            this.left = false;
+                            break;
+                        case "ArrowRight":
+                            this.right = false;
+                            break;
+                        case "ArrowUp":
+                            this.forward = false;
+                            break;
+                        case "ArrowDown":
+                            this.reverse = false;
+                            break;
+                    }
+                };
+            }
+        }
+
+        class Car {
+            constructor(x, y, width, height, controlType, maxSpeed = 3) {
+                this.x = x;
+                this.y = y;
+                this.width = width;
+                this.height = height;
+
+                this.speed = 0;
+                this.acceleration = 0.2;
+                this.maxSpeed = maxSpeed;
+                this.friction = 0.05;
+                this.angle = 0;
+
+                this.damaged = false;
+
+                this.useBrain = controlType == "AI";
+
+                this.controls = new Controls(controlType);
+            }
+
+            update(roadBorders, obstacles, otherCars) {
+                if (!this.damaged) {
+                    this.move(obstacles, otherCars);
+                    this.damaged = this.assessDamage(roadBorders, obstacles, otherCars);
+                }
+            }
+
+            assessDamage(roadBorders, obstacles, otherCars) {
+                for (const obstacle of obstacles) {
+                    if (this.rectIntersect(this.x, this.y, this.width, this.height, obstacle.x, obstacle.y, obstacle.width, obstacle.height)) {
+                        return true;
+                    }
+                }
+                for (const otherCar of otherCars) {
+                    if (otherCar !== this && this.rectIntersect(this.x, this.y, this.width, this.height, otherCar.x, otherCar.y, otherCar.width, otherCar.height)) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            move(obstacles, otherCars) {
+                if (this.controls.forward) {
+                    this.speed += this.acceleration;
+                }
+                if (this.controls.reverse) {
+                    this.speed -= this.acceleration;
+                }
+
+                if (this.speed > this.maxSpeed) {
+                    this.speed = this.maxSpeed;
+                }
+                if (this.speed < -this.maxSpeed) {
+                    this.speed = -this.maxSpeed;
+                }
+
+                if (this.speed > 0) {
+                    this.speed -= this.friction;
+                }
+                if (this.speed < 0) {
+                    this.speed += this.friction;
+                }
+
+                if (Math.abs(this.speed) < this.friction) {
+                    this.speed = 0;
+                }
+
+                if (this.controls.left) {
+                    this.angle += 0.03;
+                }
+                if (this.controls.right) {
+                    this.angle -= 0.03;
+                }
+
+                const nextX = this.x - Math.sin(this.angle) * this.speed;
+                const nextY = this.y - Math.cos(this.angle) * this.speed;
+
+                if (!this.isCollision(nextX, nextY, obstacles, otherCars)) {
+                    this.x = nextX;
+                    this.y = nextY;
+                } else {
+                    this.angle += Math.PI / 8; // Change direction
+                }
+            }
+
+            isCollision(nextX, nextY, obstacles, otherCars) {
+                for (const obstacle of obstacles) {
+                    if (this.rectIntersect(nextX, nextY, this.width, this.height, obstacle.x, obstacle.y, obstacle.width, obstacle.height)) {
+                        return true;
+                    }
+                }
+                for (const otherCar of otherCars) {
+                    if (otherCar !== this && this.rectIntersect(nextX, nextY, this.width, this.height, otherCar.x, otherCar.y, otherCar.width, otherCar.height)) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            draw(ctx) {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(-this.angle);
+
+                ctx.fillStyle = this.damaged ? "gray" : "black";
+                ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
+
+                ctx.restore();
+            }
+
+            rectIntersect(x1, y1, w1, h1, x2, y2, w2, h2) {
+                return x1 < x2 + w2 &&
+                       x1 + w1 > x2 &&
+                       y1 < y2 + h2 &&
+                       y1 + h1 > y2;
+            }
+        }
+
+        class Obstacle {
+            constructor(x, y, width, height) {
+                this.x = x;
+                this.y = y;
+                this.width = width;
+                this.height = height;
+            }
+
+            draw(ctx) {
+                ctx.fillStyle = "red";
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+            }
+        }
+
+        const canvas = document.getElementById("simulationCanvas");
+        const ctx = canvas.getContext("2d");
+
+        const cars = [];
+        const obstacles = [];
+        let carInterval;
+        let obstacleInterval;
+
+        function addCar() {
+            let x = Math.random() * canvas.width;
+            let y = Math.random() * canvas.height;
+            
+            let intersect = false;
+            for (const car of cars) {
+                if (Math.abs(x - car.x) < car.width && Math.abs(y - car.y) < car.height) {
+                    intersect = true;
+                    break;
+                }
+            }
+
+            while (intersect) {
+                x = Math.random() * canvas.width;
+                y = Math.random() * canvas.height;
+                intersect = false;
+                for (const car of cars) {
+                    if (Math.abs(x - car.x) < car.width && Math.abs(y - car.y) < car.height) {
+                        intersect = true;
+                        break;
+                    }
+                }
+            }
+
+            const car = new Car(x, y, 30, 50, "AI");
+            cars.push(car);
+        }
+
+        function addObstacle() {
+            const obstacle = new Obstacle(Math.random() * canvas.width, Math.random() * canvas.height, 50, 50);
+            obstacles.push(obstacle);
+        }
+
+        function stopAddingCars() {
+            clearInterval(carInterval);
+        }
+
+        function stopAddingObstacles() {
+            clearInterval(obstacleInterval);
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            for (const car of cars) {
+                car.update([], obstacles, cars);
+                car.draw(ctx);
+            }
+
+            for (const obstacle of obstacles) {
+                obstacle.draw(ctx);
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        carInterval = setInterval(addCar, 1000);
+        setTimeout(stopAddingCars, 10000);
+
+        obstacleInterval = setInterval(addObstacle, 1500);
+        setTimeout(stopAddingObstacles, 5000);
+
+        animate();
+    </script>
+</body>
+</html>
